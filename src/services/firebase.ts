@@ -1,35 +1,36 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getFirestore, Firestore, doc, getDoc, setDoc, collection, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
 import { getStorage, FirebaseStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getAuth, Auth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { FirebaseCredentials } from '../types';
 
+export const firebaseConfig: FirebaseCredentials = {
+  apiKey: "AIzaSyC4gNXXc_Y6l1eZ5ep272Ig9ZqwO3LSKuA",
+  authDomain: "bedada.firebaseapp.com",
+  projectId: "bedada",
+  storageBucket: "bedada.firebasestorage.app",
+  messagingSenderId: "99232413933",
+  appId: "1:99232413933:web:bdf948e3204859d670b4e4",
+  measurementId: "G-KQ1EH1L7TC"
+};
+
 const STORAGE_KEY_FIREBASE_CONFIG = 'brw_firebase_credentials';
 
-export const getSavedFirebaseConfig = (): FirebaseCredentials | null => {
+export const getSavedFirebaseConfig = (): FirebaseCredentials => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_FIREBASE_CONFIG);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.apiKey && parsed.projectId) {
+        return parsed;
+      }
     }
   } catch (err) {
     console.error('Failed to read firebase config from storage', err);
   }
-  
-  // Also check Vite env variables if present
-  if (import.meta.env.VITE_FIREBASE_API_KEY) {
-    return {
-      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-      appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-      measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
-    };
-  }
 
-  return null;
+  return firebaseConfig;
 };
 
 export const saveFirebaseConfig = (config: FirebaseCredentials): void => {
@@ -40,12 +41,10 @@ let appInstance: FirebaseApp | null = null;
 let firestoreInstance: Firestore | null = null;
 let storageInstance: FirebaseStorage | null = null;
 let authInstance: Auth | null = null;
+let analyticsInstance: any = null;
 
 export const initFirebase = (customConfig?: FirebaseCredentials) => {
   const config = customConfig || getSavedFirebaseConfig();
-  if (!config || !config.apiKey || !config.projectId) {
-    return { app: null, db: null, storage: null, auth: null, isConfigured: false };
-  }
 
   try {
     if (getApps().length === 0) {
@@ -58,29 +57,41 @@ export const initFirebase = (customConfig?: FirebaseCredentials) => {
     storageInstance = getStorage(appInstance);
     authInstance = getAuth(appInstance);
 
+    // Initialize analytics safely in browser if supported
+    if (typeof window !== 'undefined' && config.measurementId) {
+      isSupported().then((supported) => {
+        if (supported && appInstance) {
+          analyticsInstance = getAnalytics(appInstance);
+        }
+      }).catch(() => { });
+    }
+
     return {
       app: appInstance,
       db: firestoreInstance,
       storage: storageInstance,
       auth: authInstance,
+      analytics: analyticsInstance,
       isConfigured: true,
     };
   } catch (error) {
     console.warn('Firebase initialization warning:', error);
-    return { app: null, db: null, storage: null, auth: null, isConfigured: false, error };
+    return { app: null, db: null, storage: null, auth: null, analytics: null, isConfigured: false, error };
   }
 };
 
 // Initial run
 const fb = initFirebase();
+export const app = fb.app;
 export const db = fb.db;
 export const storage = fb.storage;
 export const auth = fb.auth;
+export const analytics = fb.analytics;
 export const isFirebaseConfigured = fb.isConfigured;
 
 // Firebase Storage Uploader with Base64 fallback for immediate offline preview
 export const uploadImageFile = async (
-  file: File, 
+  file: File,
   folderPath: string = 'gallery'
 ): Promise<string> => {
   const fbCurrent = initFirebase();
@@ -120,6 +131,6 @@ export {
   updateDoc,
   deleteDoc,
   signInWithEmailAndPassword,
-  signOut
+  signOut,
+  deleteObject
 };
-

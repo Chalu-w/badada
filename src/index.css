@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: #FAF7F2;
+    color: #1A2421;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  h1, h2, h3, .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+}
+
+/* Custom Gold Gradient & Glass Utilities */
+.gold-text-gradient {
+  background: linear-gradient(135deg, #F3E5AB 0%, #D4AF37 50%, #AA7C11 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-border-gradient {
+  border-image: linear-gradient(135deg, #D4AF37, #F3E5AB, #9A7B38) 1;
+}
+
+.bg-dark-pattern {
+  background-color: #0B221A;
+  background-image: radial-gradient(rgba(197, 160, 89, 0.08) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+.bg-cream-pattern {
+  background-color: #FAF7F2;
+  background-image: radial-gradient(rgba(15, 46, 35, 0.04) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Memorial Candle Flicker Animation */
+@keyframes flameFlicker {
+  0%, 100% {
+    transform: scale(1) rotate(-1deg);
+    opacity: 0.95;
+    filter: drop-shadow(0 0 10px #FFB020);
+  }
+  25% {
+    transform: scale(1.08, 0.95) rotate(1.5deg);
+    opacity: 1;
+    filter: drop-shadow(0 0 14px #FF9000);
+  }
+  50% {
+    transform: scale(0.96, 1.05) rotate(-2deg);
+    opacity: 0.9;
+    filter: drop-shadow(0 0 8px #FFC040);
+  }
+  75% {
+    transform: scale(1.04, 0.98) rotate(1deg);
+    opacity: 0.98;
+    filter: drop-shadow(0 0 12px #FFA010);
+  }
+}
+
+.flame-animation {
+  animation: flameFlicker 2.5s infinite ease-in-out;
+  transform-origin: bottom center;
+}
+
+/* Smooth custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0B221A;
+}
+::-webkit-scrollbar-thumb {
+  background: #C5A059;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #E5C378;
+}

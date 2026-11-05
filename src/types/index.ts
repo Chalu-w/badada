@@ -29,15 +29,32 @@ export interface BiographySection {
 export interface PhotoItem {
   id: string;
   url: string;
+  title?: {
+    om: string;
+    en?: string;
+    am?: string;
+  };
   caption: {
     om: string;
     en: string;
     am: string;
   };
+  description?: {
+    om?: string;
+    en?: string;
+    am?: string;
+  };
   date?: string;
   category: 'maatii' | 'jireenya' | 'hawaasa' | 'yaadannoo';
   featured?: boolean;
   uploadedAt: string;
+  storageProvider?: 'cloudinary' | 'firebase';
+}
+
+export interface CloudinarySettings {
+  cloudName: string;
+  uploadPreset?: string;
+  apiKey?: string;
 }
 
 export interface TributeItem {

@@ -23,6 +23,7 @@ import {
   saveMemorialMessageToFirestore,
   savePhotoToFirestore,
   fetchPhotosFromFirestore,
+  updatePhotoInFirestore,
   deletePhotoFromFirestore
 } from '../services/firebase';
 
@@ -37,6 +38,7 @@ interface DataContextType {
   updateConfig: (newConfig: Partial<WebsiteConfig>) => Promise<boolean>;
   updateBiographySection: (updatedSection: BiographySection) => Promise<boolean>;
   addPhoto: (photo: Omit<PhotoItem, 'id' | 'uploadedAt'>) => Promise<boolean>;
+  updatePhoto: (id: string, updatedFields: Partial<PhotoItem>) => Promise<boolean>;
   deletePhoto: (id: string) => Promise<boolean>;
   addTribute: (tribute: Omit<TributeItem, 'id' | 'date' | 'approved'>) => Promise<boolean>;
   deleteTribute: (id: string) => Promise<boolean>;
@@ -275,6 +277,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const updatePhoto = async (id: string, updatedFields: Partial<PhotoItem>): Promise<boolean> => {
+    try {
+      await updatePhotoInFirestore(id, updatedFields);
+    } catch (updateErr) {
+      console.warn('Failed to update photo in Firestore:', updateErr);
+    }
+
+    const updated = photos.map((p) => (p.id === id ? { ...p, ...updatedFields } : p));
+    setPhotos(updated);
+    localStorage.setItem(STORAGE_KEYS.PHOTOS, JSON.stringify(updated));
+    await persistFirebaseData(config, biography, updated);
+    return true;
+  };
+
   const deletePhoto = async (id: string): Promise<boolean> => {
     try {
       await deletePhotoFromFirestore(id);
@@ -405,6 +421,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateConfig,
         updateBiographySection,
         addPhoto,
+        updatePhoto,
         deletePhoto,
         addTribute,
         deleteTribute,

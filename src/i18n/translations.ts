@@ -66,6 +66,7 @@ export interface TranslationStrings {
   adminTabFamily: string;
   adminTabTributes: string;
   adminTabFirebase: string;
+  adminTabCloudinary: string;
   saveChanges: string;
   cancel: string;
   savedSuccess: string;
@@ -142,6 +143,7 @@ export const translations: Record<Language, TranslationStrings> = {
     adminTabFamily: "Odeeffannoo Maatii",
     adminTabTributes: "Dhaamsa Yaadannoo",
     adminTabFirebase: "Qindaa'ina Firebase",
+    adminTabCloudinary: "Kuusaa Cloudinary",
     saveChanges: "Jijjiirama Galmeessi",
     cancel: "Dhiisi",
     savedSuccess: "Milkaa'inaan galmaa'eera!",
@@ -216,6 +218,7 @@ export const translations: Record<Language, TranslationStrings> = {
     adminTabFamily: "Family Records",
     adminTabTributes: "Manage Tributes",
     adminTabFirebase: "Firebase Cloud Settings",
+    adminTabCloudinary: "Cloudinary Storage",
     saveChanges: "Save Changes",
     cancel: "Cancel",
     savedSuccess: "Modifications saved successfully!",
@@ -290,6 +293,7 @@ export const translations: Record<Language, TranslationStrings> = {
     adminTabFamily: "የቤተሰብ መረጃ",
     adminTabTributes: "የመታሰቢያ መልእክቶች",
     adminTabFirebase: "የፋየርቤዝ (Firebase) ማስተካከያ",
+    adminTabCloudinary: "የክላውዲናሪ (Cloudinary) ማከማቻ",
     saveChanges: "ለውጦችን መዝግብ",
     cancel: "ተመለስ",
     savedSuccess: "በተሳካ ሁኔታ ተመዝግቧል!",

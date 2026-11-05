@@ -279,7 +279,12 @@ export const Gallery: React.FC = () => {
 
                   {/* Caption & Metadata Footer */}
                   <div className="p-4 bg-white border-t border-[#F0EAE1]">
-                    <p className="font-serif text-sm font-semibold text-[#0F2E23] line-clamp-2">
+                    {item.title?.om && (
+                      <h4 className="font-serif text-sm font-bold text-[#0F2E23] line-clamp-1 mb-0.5">
+                        {item.title.om}
+                      </h4>
+                    )}
+                    <p className="font-serif text-xs text-[#5C6D66] line-clamp-2">
                       {caption}
                     </p>
                     <div className="mt-2 flex items-center justify-between text-xs text-[#5C6D66]">

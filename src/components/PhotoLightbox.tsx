@@ -43,7 +43,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, hasPrev, hasNext, photos, onClose, onNavigate]);
 
+  const titleText = (photo.title as any)?.[language] || photo.title?.om;
   const captionText = photo.caption[language] || photo.caption.om || '';
+  const descText = (photo.description as any)?.[language] || photo.description?.om;
 
   return (
     <div
@@ -95,9 +97,19 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
         {/* Caption bar */}
         <div className="mt-4 text-center text-white max-w-2xl px-4 space-y-1.5">
-          <p className="font-serif text-lg font-medium text-[#F3E5AB]">
+          {titleText && (
+            <h4 className="font-serif text-xl font-bold text-[#F3E5AB]">
+              {titleText}
+            </h4>
+          )}
+          <p className="font-serif text-sm font-medium text-gray-200">
             {captionText}
           </p>
+          {descText && (
+            <p className="text-xs text-gray-400 italic">
+              {descText}
+            </p>
+          )}
           <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
             {photo.date && (
               <span className="flex items-center gap-1">

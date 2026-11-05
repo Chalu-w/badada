@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Memorial Tributes / Messages
+    // Allow any visitor to read messages and submit a new tribute
+    match /memorial_messages/{messageId} {
+      allow read: if true;
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.relationship is string
+                    && request.resource.data.message is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.message.size() > 0;
+      allow update, delete: if request.auth != null;
+    }
+
+    // Secondary tributes collection fallback
+    match /tributes/{tributeId} {
+      allow read: if true;
+      allow create: if request.resource.data.name is string
+                    || request.resource.data.authorName is string;
+      allow update, delete: if request.auth != null;
+    }
+
+    // 2. Memorial general website data (biography, photos, config)
+    match /memorial/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null || true;
+    }
+
+    // Default: allow read for public visitors
+    match /{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

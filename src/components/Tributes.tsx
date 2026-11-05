@@ -126,12 +126,17 @@ export const Tributes: React.FC = () => {
       setSubmitSuccess(false);
       setSubmitError("Ergaa erguun hin milkoofne. Maaloo irra deebi'aa yaalaa.");
 
-      // If Cloud Firestore is disabled in the Google Cloud/Firebase console, provide helpful info
-      if (err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Cloud Firestore API')) {
+      // If Cloud Firestore permissions or setup error, provide actionable info
+      const errStr = `${err?.code || ''} ${err?.message || ''}`.toLowerCase();
+      if (errStr.includes('permission') || errStr.includes('permission_denied') || errStr.includes('permission-denied')) {
         setErrorDetails(
-          "Hubachiisa Bulchaa: Cloud Firestore Database Firebase Console (bedada) keessatti banamuu qaba. (https://console.firebase.google.com/project/bedada/firestore)"
+          "Heeyyama Firestore: Seera Firestore (Security Rules) Firebase Console (bedada -> Firestore Database -> Rules) keessatti 'allow read, create: if true;' gochuun eeyyamaa."
         );
-      } else if (err?.message?.includes('timeout')) {
+      } else if (errStr.includes('cloud firestore api') || errStr.includes('disabled')) {
+        setErrorDetails(
+          "Cloud Firestore Database Firebase Console (bedada) keessatti hin banamne."
+        );
+      } else if (errStr.includes('timeout')) {
         setErrorDetails("Walqunnamsiifni intarneetii ykn Firebase daqiiqaa muraasaaf tursiiseera.");
       }
     } finally {

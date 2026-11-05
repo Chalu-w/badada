@@ -1,6 +1,22 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import { getFirestore, Firestore, doc, getDoc, setDoc, collection, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  Firestore, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  collection, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  limit,
+  onSnapshot
+} from 'firebase/firestore';
 import { getStorage, FirebaseStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getAuth, Auth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { FirebaseCredentials } from '../types';
@@ -89,6 +105,61 @@ export const auth = fb.auth;
 export const analytics = fb.analytics;
 export const isFirebaseConfigured = fb.isConfigured;
 
+export interface MemorialMessageData {
+  name: string;
+  relationship: string;
+  location?: string;
+  message: string;
+  submissionDate?: string;
+}
+
+/**
+ * Save memorial message to Firestore 'memorial_messages' collection.
+ * Storing name, relationship, location, message, and submission date.
+ * Strictly throws if Firebase rejects or fails to save.
+ */
+export const saveMemorialMessageToFirestore = async (
+  messageData: MemorialMessageData
+): Promise<{ id: string }> => {
+  const fbCurrent = initFirebase();
+  if (!fbCurrent.db || !fbCurrent.isConfigured) {
+    throw new Error('Cloud Firestore is not initialized or configured.');
+  }
+
+  const cleanName = messageData.name.trim();
+  const cleanRelationship = messageData.relationship.trim();
+  const cleanLocation = messageData.location?.trim() || '';
+  const cleanMessage = messageData.message.trim();
+  const submissionDate = messageData.submissionDate || new Date().toISOString();
+
+  if (!cleanName || !cleanRelationship || !cleanMessage) {
+    throw new Error('Required fields are missing or whitespace-only.');
+  }
+
+  const docPayload = {
+    name: cleanName,
+    authorName: cleanName,
+    relationship: cleanRelationship,
+    location: cleanLocation,
+    message: cleanMessage,
+    submissionDate: submissionDate,
+    date: submissionDate.split('T')[0],
+    approved: true,
+    createdAt: submissionDate
+  };
+
+  const colRef = collection(fbCurrent.db, 'memorial_messages');
+
+  // Timeout promise (8 seconds) to prevent infinite pending state if Firestore backend is unreachable
+  const writePromise = addDoc(colRef, docPayload);
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Firebase network timeout while writing memorial message')), 8000)
+  );
+
+  const docRef = await Promise.race([writePromise, timeoutPromise]);
+  return { id: docRef.id };
+};
+
 // Firebase Storage Uploader with Base64 fallback for immediate offline preview
 export const uploadImageFile = async (
   file: File,
@@ -130,6 +201,12 @@ export {
   getDocs,
   updateDoc,
   deleteDoc,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
   signInWithEmailAndPassword,
   signOut,
   deleteObject

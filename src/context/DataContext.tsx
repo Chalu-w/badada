@@ -17,7 +17,10 @@ import {
   initFirebase, 
   doc, 
   getDoc, 
-  setDoc 
+  setDoc,
+  collection,
+  getDocs,
+  saveMemorialMessageToFirestore
 } from '../services/firebase';
 
 interface DataContextType {
@@ -128,10 +131,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setPhotos(data.photos);
               localStorage.setItem(STORAGE_KEYS.PHOTOS, JSON.stringify(data.photos));
             }
-            if (data.tributes) {
-              setTributes(data.tributes);
-              localStorage.setItem(STORAGE_KEYS.TRIBUTES, JSON.stringify(data.tributes));
+          // Fetch any individual messages from 'memorial_messages' collection
+          try {
+            const messagesCol = collection(fb.db, 'memorial_messages');
+            const messagesSnap = await getDocs(messagesCol);
+            if (!messagesSnap.empty) {
+              const fetchedList: TributeItem[] = [];
+              messagesSnap.forEach((docItem) => {
+                const itemData = docItem.data();
+                fetchedList.push({
+                  id: docItem.id,
+                  authorName: itemData.name || itemData.authorName || 'Jaallataa',
+                  relationship: itemData.relationship || 'Maatii',
+                  location: itemData.location || '',
+                  message: itemData.message || '',
+                  date: itemData.date || (itemData.submissionDate ? itemData.submissionDate.split('T')[0] : '2026'),
+                  approved: itemData.approved !== false
+                });
+              });
+
+              if (fetchedList.length > 0) {
+                setTributes((prev) => {
+                  const existingMap = new Map(prev.map(p => [p.id, p]));
+                  fetchedList.forEach(item => {
+                    existingMap.set(item.id, item);
+                  });
+                  const merged = Array.from(existingMap.values());
+                  localStorage.setItem(STORAGE_KEYS.TRIBUTES, JSON.stringify(merged));
+                  return merged;
+                });
+              }
             }
+          } catch (colErr) {
+            console.warn('Could not read memorial_messages collection:', colErr);
+          }
             if (data.family) {
               setFamily(data.family);
               localStorage.setItem(STORAGE_KEYS.FAMILY, JSON.stringify(data.family));
@@ -212,16 +245,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addTribute = async (tributeData: Omit<TributeItem, 'id' | 'date' | 'approved'>): Promise<boolean> => {
+    const submissionDate = new Date().toISOString();
+    const dateStr = submissionDate.split('T')[0];
+
+    // Must save to Firestore per requirement 3:
+    // "Save submitted memorial messages to Firestore.
+    // Store name, relationship, location, message, and submission date.
+    // Handle Firebase errors properly.
+    // Never show a success message unless the message is actually saved."
+    const saveResult = await saveMemorialMessageToFirestore({
+      name: tributeData.authorName,
+      relationship: tributeData.relationship,
+      location: tributeData.location,
+      message: tributeData.message,
+      submissionDate
+    });
+
+    // ONLY reaches here if Firestore save succeeded without throwing:
     const newTribute: TributeItem = {
       ...tributeData,
-      id: 'tribute_' + Date.now(),
-      date: new Date().toISOString().split('T')[0],
+      id: saveResult.id || ('tribute_' + Date.now()),
+      date: dateStr,
       approved: true
     };
     const updated = [newTribute, ...tributes];
     setTributes(updated);
     localStorage.setItem(STORAGE_KEYS.TRIBUTES, JSON.stringify(updated));
-    await persistFirebaseData(config, biography, photos, updated);
+
+    // Best-effort sync to website_data doc
+    try {
+      await persistFirebaseData(config, biography, photos, updated);
+    } catch {
+      // already saved in memorial_messages collection
+    }
+
     return true;
   };
 

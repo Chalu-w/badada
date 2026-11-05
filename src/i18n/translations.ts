@@ -46,6 +46,7 @@ export interface TranslationStrings {
   tributesFormMessage: string;
   tributesFormSubmit: string;
   tributesFormSuccess: string;
+  tributesFormError: string;
   familyHeading: string;
   familySubheading: string;
   familyTreeTitle: string;
@@ -119,8 +120,9 @@ export const translations: Record<Language, TranslationStrings> = {
     tributesFormRelation: "Walitti dhufeenya (fakkeenyaaf: Ilma, Fira, Hiriyaa)",
     tributesFormLocation: "Bakka (Magaalaa / Biyya)",
     tributesFormMessage: "Dhaamsa ykn Yaadannoo keessan asitti barreessaa...",
-    tributesFormSubmit: "Dhaamsa Ergi",
-    tributesFormSuccess: "Dhaamsi keessan galmeeffameera, galatoomaa!",
+    tributesFormSubmit: "Ergaa Ergi",
+    tributesFormSuccess: "Ergaan yaadannoo keessan milkaa'inaan ergameera. Galatoomaa.",
+    tributesFormError: "Ergaa erguun hin milkoofne. Maaloo irra deebi'aa yaalaa.",
     familyHeading: "Hidda Dhalootaa fi Maatii",
     familySubheading: "Gaaddisa Maatii, Ijoollee, fi Akaakayyuulee Isaanii",
     familyTreeTitle: "Muka Dhalootaa (Family Tree)",
@@ -192,8 +194,9 @@ export const translations: Record<Language, TranslationStrings> = {
     tributesFormRelation: "Relationship (e.g. Child, Relative, Friend, Colleague)",
     tributesFormLocation: "Location / City / Country",
     tributesFormMessage: "Write your heartfelt message or memory...",
-    tributesFormSubmit: "Submit Tribute",
-    tributesFormSuccess: "Your tribute has been submitted with reverence. Thank you!",
+    tributesFormSubmit: "Ergaa Ergi",
+    tributesFormSuccess: "Ergaan yaadannoo keessan milkaa'inaan ergameera. Galatoomaa.",
+    tributesFormError: "Ergaa erguun hin milkoofne. Maaloo irra deebi'aa yaalaa.",
     familyHeading: "Family Lineage & Kinship",
     familySubheading: "The Pillars of His Household, Children, and Grandchildren",
     familyTreeTitle: "Visual Family Tree",
@@ -265,8 +268,9 @@ export const translations: Record<Language, TranslationStrings> = {
     tributesFormRelation: "ዝምድና (ለምሳሌ፡ ልጅ፣ ዘመድ፣ ጓደኛ)",
     tributesFormLocation: "ቦታ / ከተማ / ሀገር",
     tributesFormMessage: "የልብዎን መልእክት ወይም መታሰቢያ እዚህ ይጻፉ...",
-    tributesFormSubmit: "መልእክት ላክ",
-    tributesFormSuccess: "መልእክትዎ በክብር ተመዝግቧል፣ እናመሰግናለን!",
+    tributesFormSubmit: "Ergaa Ergi",
+    tributesFormSuccess: "Ergaan yaadannoo keessan milkaa'inaan ergameera. Galatoomaa.",
+    tributesFormError: "Ergaa erguun hin milkoofne. Maaloo irra deebi'aa yaalaa.",
     familyHeading: "የትውልድ ሀረግ እና ቤተሰብ",
     familySubheading: "የቤተሰባቸው መሰረት፣ ልጆቻቸው እና የልጅ ልጆቻቸው",
     familyTreeTitle: "የቤተሰብ የዘር ሀረግ (Family Tree)",

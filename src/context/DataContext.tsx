@@ -20,7 +20,10 @@ import {
   setDoc,
   collection,
   getDocs,
-  saveMemorialMessageToFirestore
+  saveMemorialMessageToFirestore,
+  savePhotoToFirestore,
+  fetchPhotosFromFirestore,
+  deletePhotoFromFirestore
 } from '../services/firebase';
 
 interface DataContextType {
@@ -131,6 +134,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setPhotos(data.photos);
               localStorage.setItem(STORAGE_KEYS.PHOTOS, JSON.stringify(data.photos));
             }
+          // Fetch individual photos from 'photos' Firestore collection
+          try {
+            const firestorePhotos = await fetchPhotosFromFirestore();
+            if (firestorePhotos && firestorePhotos.length > 0) {
+              setPhotos((prev) => {
+                const existingMap = new Map(prev.map(p => [p.id, p]));
+                const existingUrls = new Set(prev.map(p => p.url));
+                firestorePhotos.forEach(item => {
+                  if (!existingUrls.has(item.url)) {
+                    existingMap.set(item.id, item);
+                  }
+                });
+                const merged = Array.from(existingMap.values());
+                localStorage.setItem(STORAGE_KEYS.PHOTOS, JSON.stringify(merged));
+                return merged;
+              });
+            }
+          } catch (photoColErr) {
+            console.warn('Could not read photos collection:', photoColErr);
+          }
+
           // Fetch any individual messages from 'memorial_messages' collection
           try {
             const messagesCol = collection(fb.db, 'memorial_messages');
@@ -224,19 +248,39 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addPhoto = async (photoData: Omit<PhotoItem, 'id' | 'uploadedAt'>): Promise<boolean> => {
+    // 1. Save photo metadata and URL to Firestore 'photos' collection
+    let photoId = 'photo_' + Date.now();
+    try {
+      const firestoreRes = await savePhotoToFirestore(photoData);
+      if (firestoreRes && firestoreRes.id) {
+        photoId = firestoreRes.id;
+      }
+    } catch (saveErr) {
+      console.warn('Direct save to photos collection failed, falling back to document persist:', saveErr);
+    }
+
     const newPhoto: PhotoItem = {
       ...photoData,
-      id: 'photo_' + Date.now(),
+      id: photoId,
       uploadedAt: new Date().toISOString()
     };
-    const updated = [newPhoto, ...photos];
+
+    // 2. Prevent duplicate entries
+    const updated = [newPhoto, ...photos.filter(p => p.id !== photoId && p.url !== photoData.url)];
     setPhotos(updated);
     localStorage.setItem(STORAGE_KEYS.PHOTOS, JSON.stringify(updated));
+
+    // 3. Persist to website_data document for fast full retrieval
     await persistFirebaseData(config, biography, updated);
     return true;
   };
 
   const deletePhoto = async (id: string): Promise<boolean> => {
+    try {
+      await deletePhotoFromFirestore(id);
+    } catch (delErr) {
+      console.warn('Failed to delete photo doc from Firestore:', delErr);
+    }
     const updated = photos.filter(p => p.id !== id);
     setPhotos(updated);
     localStorage.setItem(STORAGE_KEYS.PHOTOS, JSON.stringify(updated));

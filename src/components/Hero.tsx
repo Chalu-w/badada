@@ -1,8 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import { uploadImageFile } from '../services/firebase';
-import { BookOpen, Image as ImageIcon, Flame, Calendar, Upload, Award, Heart } from 'lucide-react';
+import { BookOpen, Image as ImageIcon, Flame, Calendar, Upload, Award, Heart, Loader2 } from 'lucide-react';
 
 interface HeroProps {
   onOpenUploadModal?: () => void;
@@ -12,18 +13,30 @@ interface HeroProps {
 export const Hero: React.FC<HeroProps> = ({ onOpenCandleModal }) => {
   const { language, t } = useLanguage();
   const { config, updateConfig, lightCandle } = useData();
+  const { isAdmin } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isPortraitUploading, setIsPortraitUploading] = useState(false);
 
   const handlePortraitUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!isAdmin) {
+      alert("Suuraa duraa jijjiiruuf eeyyama bulchaa (Administrator) barbaachisa. Maaloo mallattoo 'Admin' cuqaasuun dura seenaa.");
+      return;
+    }
+
     try {
+      setIsPortraitUploading(true);
       const downloadUrl = await uploadImageFile(file, 'portraits');
       await updateConfig({ heroPortraitUrl: downloadUrl });
-    } catch (err) {
+      alert("Suuraan Obbo Badhaadhaa milkaa'inaan jijjiirameera.");
+    } catch (err: any) {
       console.error('Portrait upload failed', err);
-      alert('Suuraa olkaahuun hin danda' + "'" + 'amne. Irra deebi' + "'" + 'aa yaalaa.');
+      alert(err?.message || 'Suuraa olkaahuun hin danda\'amne. Irra deebi\'aa yaalaa.');
+    } finally {
+      setIsPortraitUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -78,15 +91,26 @@ export const Hero: React.FC<HeroProps> = ({ onOpenCandleModal }) => {
                       type="file" 
                       ref={fileInputRef} 
                       onChange={handlePortraitUpload} 
-                      accept="image/*" 
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" 
                       className="hidden" 
+                      disabled={isPortraitUploading}
                     />
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#C5A059] hover:bg-[#DFBE76] text-[#0A2219] text-xs font-bold tracking-wide shadow-lg transition-transform active:scale-95"
+                      disabled={isPortraitUploading}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#C5A059] hover:bg-[#DFBE76] text-[#0A2219] text-xs font-bold tracking-wide shadow-lg transition-transform active:scale-95 disabled:opacity-50"
                     >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Suuraa Olkaa'aa</span>
+                      {isPortraitUploading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Olkaa'aa jira...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Suuraa Olkaa'aa</span>
+                        </>
+                      )}
                     </button>
                     <span className="text-[10px] text-[#C5A059]/80 mt-2 italic">
                       (Suuraa dhugaa qofa)
@@ -110,14 +134,25 @@ export const Hero: React.FC<HeroProps> = ({ onOpenCandleModal }) => {
                   type="file" 
                   ref={fileInputRef} 
                   onChange={handlePortraitUpload} 
-                  accept="image/*" 
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" 
                   className="hidden" 
+                  disabled={isPortraitUploading}
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-xs text-[#E5C378] hover:text-white flex items-center gap-1.5 underline decoration-[#C5A059] transition-colors"
+                  disabled={isPortraitUploading}
+                  className="text-xs text-[#E5C378] hover:text-white flex items-center gap-1.5 underline decoration-[#C5A059] transition-colors disabled:opacity-50"
                 >
-                  <Upload className="w-3 h-3" /> Suuraa Jijjiiri
+                  {isPortraitUploading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Olkaa'aa jira...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3 h-3" /> Suuraa Jijjiiri
+                    </>
+                  )}
                 </button>
               </div>
             )}

@@ -19,7 +19,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage, FirebaseStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getAuth, Auth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { FirebaseCredentials } from '../types';
+import { FirebaseCredentials, PhotoItem } from '../types';
 
 export const firebaseConfig: FirebaseCredentials = {
   apiKey: "AIzaSyC4gNXXc_Y6l1eZ5ep272Ig9ZqwO3LSKuA",
@@ -71,6 +71,14 @@ export const initFirebase = (customConfig?: FirebaseCredentials) => {
 
     firestoreInstance = getFirestore(appInstance);
     storageInstance = getStorage(appInstance);
+    // Crucial: Set max retry time to 12 seconds (default is 10 minutes / 600,000ms!)
+    // This prevents the SDK from hanging when a bucket is missing, restricted, or offline
+    try {
+      storageInstance.maxUploadRetryTime = 12000;
+      storageInstance.maxOperationRetryTime = 12000;
+    } catch {
+      // ignore
+    }
     authInstance = getAuth(appInstance);
 
     // Initialize analytics safely in browser if supported
@@ -160,37 +168,190 @@ export const saveMemorialMessageToFirestore = async (
   return { id: docRef.id };
 };
 
-// Firebase Storage Uploader with Base64 fallback for immediate offline preview
+// Verified image extensions & mime types per requirement: JPG, JPEG, PNG, WEBP
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const ALLOWED_IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB limit
+
+/**
+ * Upload an image file to Firebase Storage and obtain the genuine download URL.
+ * Strictly verifies file format (JPG, JPEG, PNG, WEBP) and size (<= 10MB).
+ * Enforces timeout guard so the upload NEVER hangs indefinitely on "Olkaa'aa jira...".
+ * Never saves fake or Base64 fallback URLs.
+ */
 export const uploadImageFile = async (
   file: File,
   folderPath: string = 'gallery'
 ): Promise<string> => {
-  const fbCurrent = initFirebase();
-  if (fbCurrent.storage && fbCurrent.isConfigured) {
-    try {
-      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const storageRef = ref(fbCurrent.storage, `${folderPath}/${fileName}`);
-      const uploadResult = await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(uploadResult.ref);
-      return downloadUrl;
-    } catch (e) {
-      console.warn('Firebase storage upload failed, falling back to local base64:', e);
-    }
+  // 1. Validate file existence
+  if (!file) {
+    throw new Error("Maaloo suuraa filadhaa (Please select an image file).");
   }
 
-  // Graceful client fallback: Convert file to Base64 data URL so it displays and persists immediately!
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read file as base64 string'));
+  // 2. Validate format (JPG, JPEG, PNG, WEBP)
+  const fileExt = '.' + (file.name.split('.').pop() || '').toLowerCase();
+  const fileMime = (file.type || '').toLowerCase();
+  const isTypeValid = ALLOWED_IMAGE_TYPES.includes(fileMime) || ALLOWED_IMAGE_EXTS.includes(fileExt);
+
+  if (!isTypeValid) {
+    throw new Error(
+      "Gosa faayilii hin eeyyamamne. Maaloo suuraa JPG, JPEG, PNG ykn WEBP qofa filadhaa."
+    );
+  }
+
+  // 3. Validate file size (10MB maximum)
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    throw new Error(
+      "Guddinni suuraa baay'ee guddaadha (hanga 10MB qofa eeyyamama). Maaloo suuraa salphaa filadhaa."
+    );
+  }
+
+  // 4. Check Firebase Storage initialization
+  const fbCurrent = initFirebase();
+  if (!fbCurrent.storage || !fbCurrent.isConfigured) {
+    throw new Error(
+      "Firebase Storage hin qindeeffamne. Maaloo qindaa'ina Firebase to'adhaa."
+    );
+  }
+
+  // 5. Upload to Firebase Storage with timeout guard
+  const sanitizedFileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const storageRef = ref(fbCurrent.storage, `${folderPath}/${sanitizedFileName}`);
+
+  try {
+    // 25-second timeout promise to prevent infinite retry loop if bucket is not created or network fails
+    const uploadPromise = uploadBytes(storageRef, file, {
+      contentType: file.type || 'image/jpeg'
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('timeout: Yeroon olkaa’uu dhumateera (Upload timeout). Firebase Storage to\'adhaa.')),
+        25000
+      )
+    );
+
+    const uploadResult = await Promise.race([uploadPromise, timeoutPromise]);
+    const downloadUrl = await getDownloadURL(uploadResult.ref);
+
+    if (!downloadUrl) {
+      throw new Error("Download URL hin argamne.");
+    }
+
+    return downloadUrl;
+  } catch (err: any) {
+    console.error('Firebase Storage upload error:', err);
+    const errCode = (err?.code || '').toLowerCase();
+    const errMsg = (err?.message || '').toLowerCase();
+
+    // Specific user-friendly Afaan Oromoo error translations
+    if (errCode.includes('unauthorized') || errMsg.includes('unauthorized') || errMsg.includes('permission')) {
+      throw new Error(
+        "Eeyyamni Firebase Storage hin jiru (Permission Denied). Maaloo seera Storage qindeessaa ykn akka bulchaatti seenaa."
+      );
+    } else if (errCode.includes('quota') || errMsg.includes('quota')) {
+      throw new Error("Hangi kuusaa (Storage Quota) Firebase guuteera.");
+    } else if (
+      errCode.includes('bucket-not-found') || 
+      errMsg.includes('404') || 
+      errMsg.includes('not exist') || 
+      errMsg.includes('not found')
+    ) {
+      throw new Error(
+        "Kallattiin kuusaa Firebase Storage (bedada.firebasestorage.app) Firebase Console keessatti hin banamne. Maaloo Firebase Console -> Storage -> 'Get started' jedhaa banaa."
+      );
+    } else if (errMsg.includes('timeout')) {
+      throw new Error(
+        "Yeroon suuraa olkaa'uu dhumateera (Upload Timeout). Maaloo intarneetii to'adhaatii irra deebi'aa yaalaa."
+      );
+    }
+
+    throw new Error(
+      err?.message || "Suuraa olkaa'uun hin milkoofne. Maaloo irra deebi'aa yaalaa."
+    );
+  }
+};
+
+/**
+ * Save photo metadata and genuine Firebase Storage URL to Firestore 'photos' collection.
+ */
+export const savePhotoToFirestore = async (
+  photoData: Omit<PhotoItem, 'id' | 'uploadedAt'>
+): Promise<{ id: string }> => {
+  const fbCurrent = initFirebase();
+  if (!fbCurrent.db || !fbCurrent.isConfigured) {
+    throw new Error('Cloud Firestore is not initialized or configured.');
+  }
+
+  const uploadedAt = new Date().toISOString();
+  const docPayload = {
+    url: photoData.url,
+    caption: photoData.caption,
+    date: photoData.date || new Date().getFullYear().toString(),
+    category: photoData.category,
+    featured: photoData.featured || false,
+    uploadedAt: uploadedAt,
+    createdAt: serverTimestamp()
+  };
+
+  const colRef = collection(fbCurrent.db, 'photos');
+  const writePromise = addDoc(colRef, docPayload);
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Firebase timeout while saving photo to Firestore')), 10000)
+  );
+
+  const docRef = await Promise.race([writePromise, timeoutPromise]);
+  return { id: docRef.id };
+};
+
+/**
+ * Fetch photos from Firestore 'photos' collection.
+ */
+export const fetchPhotosFromFirestore = async (): Promise<PhotoItem[]> => {
+  const fbCurrent = initFirebase();
+  if (!fbCurrent.db || !fbCurrent.isConfigured) return [];
+
+  try {
+    const colRef = collection(fbCurrent.db, 'photos');
+    const snap = await getDocs(colRef);
+    const results: PhotoItem[] = [];
+    snap.forEach((docItem) => {
+      const data = docItem.data();
+      if (data && data.url) {
+        results.push({
+          id: docItem.id,
+          url: data.url,
+          caption: data.caption || {
+            om: 'Suuraa Maatii',
+            en: 'Family Photograph',
+            am: 'የቤተሰብ ፎቶ'
+          },
+          date: data.date || '',
+          category: data.category || 'maatii',
+          featured: data.featured || false,
+          uploadedAt: data.uploadedAt || new Date().toISOString()
+        });
       }
-    };
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
+    });
+    return results;
+  } catch (err) {
+    console.warn('Failed to fetch photos from Firestore:', err);
+    return [];
+  }
+};
+
+/**
+ * Delete photo document from Firestore 'photos' collection.
+ */
+export const deletePhotoFromFirestore = async (id: string): Promise<void> => {
+  const fbCurrent = initFirebase();
+  if (!fbCurrent.db || !fbCurrent.isConfigured) return;
+  try {
+    const docRef = doc(fbCurrent.db, 'photos', id);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Failed to delete photo from Firestore:', err);
+  }
 };
 
 export {

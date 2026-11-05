@@ -149,8 +149,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, initial
       const url = await uploadImageFile(file, 'portraits');
       await updateConfig({ heroPortraitUrl: url });
       triggerSuccess('Suuraan Obbo Badhaadhaa milkaa\'inaan jijjiirameera!');
-    } catch (err) {
-      alert('Suuraa olkaahuun hin danda\'amne.');
+    } catch (err: any) {
+      alert(err?.message || 'Suuraa olkaahuun hin danda\'amne.');
     } finally {
       setIsSaving(false);
     }
@@ -165,8 +165,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, initial
       const url = await uploadImageFile(file, 'logos');
       await updateConfig({ customLogoUrl: url, logoType: 'custom' });
       triggerSuccess('Mallattoon (logo) haaraan milkaa\'inaan jijjiirameera!');
-    } catch (err) {
-      alert('Logo olkaahuun hin danda\'amne.');
+    } catch (err: any) {
+      alert(err?.message || 'Logo olkaahuun hin danda\'amne.');
     } finally {
       setIsSaving(false);
     }
